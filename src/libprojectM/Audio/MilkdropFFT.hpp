@@ -4,32 +4,38 @@
 Copyright 2005-2013 Nullsoft, Inc.
 All rights reserved.
 
-Redistribution and use in source and binary forms, with or without modification, 
+Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
 
   * Redistributions of source code must retain the above copyright notice,
-    this list of conditions and the following disclaimer. 
+    this list of conditions and the following disclaimer.
 
   * Redistributions in binary form must reproduce the above copyright notice,
     this list of conditions and the following disclaimer in the documentation
-    and/or other materials provided with the distribution. 
+    and/or other materials provided with the distribution.
 
-  * Neither the name of Nullsoft nor the names of its contributors may be used to 
-    endorse or promote products derived from this software without specific prior written permission. 
- 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR 
-IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND 
-FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR 
+  * Neither the name of Nullsoft nor the names of its contributors may be used to
+    endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
 CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
 DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT 
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #pragma once
 
+#ifdef __APPLE__
+#include <Accelerate/Accelerate.h>
+#define USE_ACCELERATE_FFT 1
+#else
 #include <complex>
+#endif
+
 #include <vector>
 
 namespace libprojectM {
@@ -53,6 +59,18 @@ public:
      *                      See InitEnvelopeTable for more info.
      */
     MilkdropFFT(size_t samplesIn, size_t samplesOut, bool equalize = true, float envelopePower = 1.0f);
+
+    /**
+     * @brief Destructor.
+     * Cleans up FFT resources (Accelerate FFTSetup on Apple platforms).
+     */
+    ~MilkdropFFT();
+
+    // Non-copyable and non-movable due to FFT setup resources
+    MilkdropFFT(const MilkdropFFT&) = delete;
+    MilkdropFFT& operator=(const MilkdropFFT&) = delete;
+    MilkdropFFT(MilkdropFFT&&) = delete;
+    MilkdropFFT& operator=(MilkdropFFT&&) = delete;
 
     /**
      * @brief Converts time-domain samples into frequency-domain samples.
@@ -136,6 +154,7 @@ private:
      */
     void InitEqualizeTable(bool equalize);
 
+#ifndef USE_ACCELERATE_FFT
     /**
      * @brief Builds the sample lookup table for each octave.
      */
@@ -145,14 +164,24 @@ private:
      * @brief Builds a table with the Nth roots of unity inputs for the transform.
      */
     void InitCosSinTable();
+#endif
 
     size_t m_samplesIn{}; //!< Number of waveform samples to use for the FFT calculation.
     size_t m_numFrequencies{}; //!< Number of frequency samples calculated by the FFT.
 
-    std::vector<size_t> m_bitRevTable; //!< Index table for frequency-specific waveform data lookups.
     std::vector<float> m_envelope; //!< Equalizer envelope table.
     std::vector<float> m_equalize; //!< Equalization values.
+
+#ifdef USE_ACCELERATE_FFT
+    FFTSetup m_fftSetup{nullptr}; //!< Apple vDSP FFT setup object.
+    size_t m_log2n{}; //!< Log2 of FFT size for vDSP.
+    std::vector<float> m_realBuffer; //!< Real part buffer for split complex format.
+    std::vector<float> m_imagBuffer; //!< Imaginary part buffer for split complex format.
+    std::vector<float> m_windowedInput; //!< Pre-windowed input buffer.
+#else
+    std::vector<size_t> m_bitRevTable; //!< Index table for frequency-specific waveform data lookups.
     std::vector<std::complex<float>> m_cosSinTable; //!< Table with complex polar coordinates for the different frequency domains used in the FFT.
+#endif
 };
 
 } // namespace Audio

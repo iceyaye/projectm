@@ -21,3 +21,11 @@ target_link_libraries(Audio
         PUBLIC
         libprojectM::API
         )
+
+# Link Accelerate framework on Apple platforms for optimized FFT
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(Audio
+            PUBLIC
+            "-framework Accelerate"
+            )
+endif()

@@ -28,6 +28,7 @@ test_api_headers(TestMainAPIHeaders
 
 add_executable(projectM-unittest
         LoggingTest.cpp
+        MilkdropFFTTest.cpp
         PresetFileParserTest.cpp
         WaveformAlignerTest.cpp
 

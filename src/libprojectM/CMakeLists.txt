@@ -45,6 +45,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(projectM_main
             PUBLIC
             "-framework CoreFoundation"
+            "-framework Accelerate"
             )
 endif()
 
@@ -88,6 +89,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(projectM
             PUBLIC
             "-framework CoreFoundation"
+            "-framework Accelerate"
             )
 endif()
 

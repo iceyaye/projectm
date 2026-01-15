@@ -4,35 +4,68 @@
 Copyright 2005-2013 Nullsoft, Inc.
 All rights reserved.
 
-Redistribution and use in source and binary forms, with or without modification, 
+Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
 
   * Redistributions of source code must retain the above copyright notice,
-    this list of conditions and the following disclaimer. 
+    this list of conditions and the following disclaimer.
 
   * Redistributions in binary form must reproduce the above copyright notice,
     this list of conditions and the following disclaimer in the documentation
-    and/or other materials provided with the distribution. 
+    and/or other materials provided with the distribution.
 
-  * Neither the name of Nullsoft nor the names of its contributors may be used to 
-    endorse or promote products derived from this software without specific prior written permission. 
- 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR 
-IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND 
-FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR 
+  * Neither the name of Nullsoft nor the names of its contributors may be used to
+    endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
 CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
 DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT 
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "Audio/MilkdropFFT.hpp"
 
+#include <cmath>
+
 namespace libprojectM {
 namespace Audio {
 
 constexpr auto PI = 3.141592653589793238462643383279502884197169399f;
+
+#ifdef USE_ACCELERATE_FFT
+
+MilkdropFFT::MilkdropFFT(size_t samplesIn, size_t samplesOut, bool equalize, float envelopePower)
+    : m_samplesIn(samplesIn)
+    , m_numFrequencies(samplesOut * 2)
+{
+    // Calculate log2 of FFT size
+    m_log2n = static_cast<size_t>(std::log2(m_numFrequencies));
+
+    // Create FFT setup for radix-2 FFT
+    m_fftSetup = vDSP_create_fftsetup(m_log2n, FFT_RADIX2);
+
+    // Allocate buffers for split complex format
+    m_realBuffer.resize(m_numFrequencies);
+    m_imagBuffer.resize(m_numFrequencies);
+    m_windowedInput.resize(m_numFrequencies);
+
+    InitEnvelopeTable(envelopePower);
+    InitEqualizeTable(equalize);
+}
+
+MilkdropFFT::~MilkdropFFT()
+{
+    if (m_fftSetup != nullptr)
+    {
+        vDSP_destroy_fftsetup(m_fftSetup);
+    }
+}
+
+#else
 
 MilkdropFFT::MilkdropFFT(size_t samplesIn, size_t samplesOut, bool equalize, float envelopePower)
     : m_samplesIn(samplesIn)
@@ -43,6 +76,10 @@ MilkdropFFT::MilkdropFFT(size_t samplesIn, size_t samplesOut, bool equalize, flo
     InitEnvelopeTable(envelopePower);
     InitEqualizeTable(equalize);
 }
+
+MilkdropFFT::~MilkdropFFT() = default;
+
+#endif
 
 void MilkdropFFT::InitEnvelopeTable(float power)
 {
@@ -91,6 +128,8 @@ void MilkdropFFT::InitEqualizeTable(bool equalize)
         m_equalize[i] = scaling * std::log(static_cast<float>(m_numFrequencies / 2 - i) * inverseHalfNumFrequencies);
     }
 }
+
+#ifndef USE_ACCELERATE_FFT
 
 void MilkdropFFT::InitBitRevTable()
 {
@@ -147,6 +186,56 @@ void MilkdropFFT::InitCosSinTable()
     }
 }
 
+#endif
+
+#ifdef USE_ACCELERATE_FFT
+
+void MilkdropFFT::TimeToFrequencyDomain(const std::vector<float>& waveformData, std::vector<float>& spectralData)
+{
+    if (m_fftSetup == nullptr || waveformData.size() < m_samplesIn)
+    {
+        spectralData.clear();
+        return;
+    }
+
+    // 1. Apply envelope to input and zero-pad
+    // Use vDSP_vmul for vectorized multiply of waveform * envelope
+    vDSP_vmul(waveformData.data(), 1, m_envelope.data(), 1, m_windowedInput.data(), 1, m_samplesIn);
+
+    // Zero-pad the rest if numFrequencies > samplesIn
+    if (m_numFrequencies > m_samplesIn)
+    {
+        std::fill(m_windowedInput.begin() + m_samplesIn, m_windowedInput.end(), 0.0f);
+    }
+
+    // 2. Set up split complex format for vDSP
+    // vDSP expects real data packed as interleaved pairs in the real buffer
+    DSPSplitComplex splitComplex;
+    splitComplex.realp = m_realBuffer.data();
+    splitComplex.imagp = m_imagBuffer.data();
+
+    // Convert real input to split complex (treats pairs as real/imag)
+    vDSP_ctoz(reinterpret_cast<const DSPComplex*>(m_windowedInput.data()), 2,
+              &splitComplex, 1, m_numFrequencies / 2);
+
+    // 3. Perform in-place FFT
+    vDSP_fft_zrip(m_fftSetup, &splitComplex, 1, m_log2n, FFT_FORWARD);
+
+    // 4. Calculate magnitudes using vDSP
+    // vDSP_zvabs computes sqrt(real^2 + imag^2) for each complex pair
+    spectralData.resize(m_numFrequencies / 2);
+    vDSP_zvabs(&splitComplex, 1, spectralData.data(), 1, m_numFrequencies / 2);
+
+    // 5. Apply equalization using vectorized multiply
+    vDSP_vmul(spectralData.data(), 1, m_equalize.data(), 1, spectralData.data(), 1, m_numFrequencies / 2);
+
+    // Scale factor for vDSP FFT (vDSP FFT results are scaled by 2)
+    float scale = 0.5f;
+    vDSP_vsmul(spectralData.data(), 1, &scale, spectralData.data(), 1, m_numFrequencies / 2);
+}
+
+#else
+
 void MilkdropFFT::TimeToFrequencyDomain(const std::vector<float>& waveformData, std::vector<float>& spectralData)
 {
     if (m_bitRevTable.empty() || m_cosSinTable.empty() || waveformData.size() < m_samplesIn)
@@ -201,6 +290,8 @@ void MilkdropFFT::TimeToFrequencyDomain(const std::vector<float>& waveformData, 
         spectralData[i] = m_equalize[i] * std::abs(spectrumData[i]);
     }
 }
+
+#endif
 
 } // namespace Audio
 } // namespace libprojectM

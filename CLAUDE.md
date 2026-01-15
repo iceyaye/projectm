@@ -15,12 +15,13 @@ projectM is an open-source music visualizer library that reimplements Winamp Mil
 ```bash
 # Clean, configure, build, and install (macOS universal binary)
 rm -rf build
-cmake -B build \
-  -DCMAKE_INSTALL_PREFIX=/usr/local \
-  -DBUILD_SHARED_LIBS=ON \
-  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
-cmake --build build
-sudo cmake --install build
+  cmake -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DBUILD_SHARED_LIBS=ON \
+    -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+  cmake --build build
+  sudo cmake --install build
 
 # Run tests (must enable BUILD_TESTING first)
 cmake -B build -DBUILD_TESTING=ON

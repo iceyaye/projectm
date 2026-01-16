@@ -93,6 +93,19 @@ PROJECTM_EXPORT void projectm_load_preset_data(projectm_handle instance, const c
                                                bool smooth_transition);
 
 /**
+ * @brief Hints projectM about the next preset to be loaded.
+ *
+ * This allows projectM to preload the preset in the background, reducing
+ * the delay when the preset is actually requested via projectm_load_preset_file().
+ * This is optional - if not called, presets will be loaded synchronously as before.
+ *
+ * @param instance The projectM instance handle.
+ * @param filename The preset filename to preload.
+ * @since 4.2.0
+ */
+PROJECTM_EXPORT void projectm_hint_next_preset(projectm_handle instance, const char* filename);
+
+/**
  * @brief Reloads all textures.
  *
  * Calling this method will clear and reload all textures, including the main rendering texture.

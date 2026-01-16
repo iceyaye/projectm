@@ -47,6 +47,7 @@ class SpriteManager;
 
 class Preset;
 class PresetFactoryManager;
+class PresetPreloader;
 class TimeKeeper;
 
 class PROJECTM_EXPORT ProjectM
@@ -91,6 +92,17 @@ public:
      *                         If set to false, the new preset will be rendered immediately.
      */
     void LoadPresetData(std::istream& presetData, bool smoothTransition);
+
+    /**
+     * @brief Hints projectM about the next preset to be loaded.
+     *
+     * This allows projectM to preload the preset in the background, reducing
+     * the delay when the preset is actually requested via LoadPresetFile().
+     * This is optional - if not called, presets will be loaded synchronously.
+     *
+     * @param filename The preset filename to preload.
+     */
+    void HintNextPreset(const std::string& filename);
 
     void SetWindowSize(uint32_t width, uint32_t height);
 
@@ -303,6 +315,7 @@ private:
     std::unique_ptr<Renderer::PresetTransition> m_transition;                     //!< Transition effect used for blending.
     std::unique_ptr<TimeKeeper> m_timeKeeper;                                     //!< Keeps the different timers used to render and switch presets.
     std::unique_ptr<UserSprites::SpriteManager> m_spriteManager;                  //!< Manages all types of user sprites.
+    std::unique_ptr<PresetPreloader> m_presetPreloader;                           //!< Asynchronous preset preloader.
 };
 
 } // namespace libprojectM

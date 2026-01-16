@@ -100,6 +100,12 @@ void projectm_load_preset_data(projectm_handle instance, const char* data,
     projectMInstance->LoadPresetData(presetDataStream, smooth_transition);
 }
 
+void projectm_hint_next_preset(projectm_handle instance, const char* filename)
+{
+    auto projectMInstance = handle_to_instance(instance);
+    projectMInstance->HintNextPreset(filename ? filename : "");
+}
+
 void projectm_set_preset_switch_requested_event_callback(projectm_handle instance,
                                                          projectm_preset_switch_requested_event callback, void* user_data)
 {

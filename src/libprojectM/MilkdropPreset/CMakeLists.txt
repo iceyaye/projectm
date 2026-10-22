@@ -139,15 +139,27 @@ target_link_libraries(MilkdropPreset
         libprojectM::API # For export header
         PUBLIC
         hlslparser
-        GLM::GLM
-        ${PROJECTM_OPENGL_LIBRARIES}
+        glm::glm
         )
 
-if(NOT BUILD_SHARED_LIBS)
+if(BUILD_SHARED_LIBS)
+    if(ENABLE_CXX_INTERFACE)
+        target_compile_definitions(MilkdropPreset
+                PRIVATE
+                projectM_api_EXPORTS
+                )
+    else()
+        target_compile_definitions(MilkdropPreset
+                PRIVATE
+                PROJECTM_CXX_STATIC_DEFINE
+                )
+    endif()
+else()
     target_compile_definitions(MilkdropPreset
-        PRIVATE
-        PROJECTM_STATIC_DEFINE
-        )
+            PRIVATE
+            PROJECTM_STATIC_DEFINE
+            PROJECTM_CXX_STATIC_DEFINE
+            )
 endif()
 
 set_target_properties(MilkdropPreset PROPERTIES

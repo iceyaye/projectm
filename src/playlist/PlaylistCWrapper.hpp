@@ -36,7 +36,7 @@ public:
      */
     virtual void Connect(projectm_handle projectMInstance);
 
-    virtual void PlayPresetIndex(uint32_t index, bool hardCut, bool resetFailureCount);
+    virtual void PlayPresetIndex(uint32_t index, bool hardCut);
 
     /**
      * @brief Callback executed by projectM if a preset switch should be done.
@@ -83,6 +83,14 @@ public:
                                                void* userData);
 
     /**
+     * @brief Sets the preset load callback.
+     * @param callback The callback pointer.
+     * @param userData The callback context data.
+     */
+    virtual void SetPresetLoadCallback(projectm_playlist_preset_load_event callback,
+                                       void* userData);
+
+    /**
      * @brief Sets the last navigation direction used to switch a preset.
      * This is used when retrying on a failed preset load, keeping the same direction/logic as in the original switch.
      * @param direction The direction.
@@ -110,6 +118,9 @@ private:
 
     projectm_playlist_preset_switch_failed_event m_presetSwitchFailedEventCallback{nullptr}; //!< Preset switch failed callback pointer set by the application.
     void* m_presetSwitchFailedEventUserData{nullptr};                                        //!< Context data pointer set by the application.
+
+    projectm_playlist_preset_load_event m_presetLoadEventCallback{nullptr}; //!< Preset load callback pointer set by the application.
+    void* m_presetLoadEventUserData{nullptr};                               //!< Context data pointer set by the application.
 
     NavigationDirection m_lastNavigationDirection{NavigationDirection::Next}; //!< Last direction used to switch a preset.
 };

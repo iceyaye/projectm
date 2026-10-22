@@ -34,6 +34,25 @@ target_link_libraries(UserSprites
         libprojectM::API # For export header
         PUBLIC
         MilkdropPreset
-        GLM::GLM
-        ${PROJECTM_OPENGL_LIBRARIES}
+        glm::glm
         )
+
+if(BUILD_SHARED_LIBS)
+    if(ENABLE_CXX_INTERFACE)
+        target_compile_definitions(UserSprites
+                PRIVATE
+                projectM_api_EXPORTS
+                )
+    else()
+        target_compile_definitions(UserSprites
+                PRIVATE
+                PROJECTM_CXX_STATIC_DEFINE
+                )
+    endif()
+else()
+    target_compile_definitions(UserSprites
+            PRIVATE
+            PROJECTM_STATIC_DEFINE
+            PROJECTM_CXX_STATIC_DEFINE
+            )
+endif()

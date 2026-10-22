@@ -1,7 +1,8 @@
 
 #include "Engine.h"
+#include <cctype>
 
-#include "libprojectM/Logging.hpp"
+//#include "libprojectM/Logging.hpp"
 
 #include <cstdio>  // vsnprintf
 #include <cstring> // strcmp, strcasecmp
@@ -71,16 +72,28 @@ bool String_EqualNoCase(const char * a, const char * b) {
 
 static inline double iss_strtod(const char * in, char ** end) {
     char * in_var = const_cast<char *>(in);
+
+    // The tokenizer calls this for every token, so only the characters that can form a number
+    // are passed to the stream.
+    const char * numEnd = in;
+    while (isdigit(*numEnd) || *numEnd == '.' || *numEnd == 'e' || *numEnd == 'E' ||
+           ((*numEnd == '+' || *numEnd == '-') && numEnd > in && (numEnd[-1] == 'e' || numEnd[-1] == 'E')))
+        ++numEnd;
+    if (numEnd == in) {
+        *end = in_var;
+        return 0.0;
+    }
+
     double df;
-    std::istringstream iss(in);
-    iss.imbue(std::locale("C"));
+    std::istringstream iss(std::string(in, numEnd));
+    iss.imbue(std::locale::classic());
     iss >> df;
     if(iss.fail()) {
         *end = in_var;
         return 0.0;
     }
     if(iss.eof()) {
-        *end = in_var + strlen(in);
+        *end = in_var + (numEnd - in);
         return df;
     }
 
@@ -117,14 +130,14 @@ void Log_Error(const char * format, ...) {
 }
 
 void Log_ErrorArgList(const char * format, va_list args) {
-    using libprojectM::Logging;
+    //using libprojectM::Logging;
 
     va_list tmp;
     va_copy(tmp, args);
     std::vector<char> buffer(static_cast<size_t>(std::vsnprintf(nullptr, 0, format, tmp)) + 1, '\0');
     va_end(tmp);
     vsnprintf(buffer.data(), buffer.size(), format, args );
-    LOG_ERROR("[HLSLParser] " + std::string(buffer.data()));
+    //LOG_ERROR("[HLSLParser] " + std::string(buffer.data()));
 }
 
 

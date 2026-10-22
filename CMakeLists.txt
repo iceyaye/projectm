@@ -53,7 +53,7 @@ endif()
 
 project(libprojectM
         LANGUAGES C CXX
-        VERSION 4.1.0
+        VERSION 4.2.0
         )
 
 # The API (SO) version for the shared library. Should be incremented whenever the binary interface changes
@@ -65,7 +65,7 @@ set(PROJECTM_SO_VERSION "4")
 set(PROJECTM_LIBRARY_BASE_OUTPUT_NAME "projectM-${PROJECT_VERSION_MAJOR}")
 
 # The actual (full) library version of projectM
-set(PROJECTM_LIB_VERSION "${CMAKE_PROJECT_VERSION}")
+set(PROJECTM_LIB_VERSION "${PROJECT_VERSION}")
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECTM_SOURCE_DIR}/cmake")
 
@@ -97,6 +97,7 @@ endif()
 cmake_dependent_option(BUILD_SHARED_LIBS "Build and install libprojectM as a shared libraries. If OFF, builds as static libraries." ON "NOT ENABLE_EMSCRIPTEN" OFF)
 cmake_dependent_option(ENABLE_GLES "Enable OpenGL ES support" OFF "NOT ENABLE_EMSCRIPTEN AND NOT CMAKE_SYSTEM_NAME STREQUAL Android" ON)
 cmake_dependent_option(ENABLE_INSTALL "Enable installing projectM libraries and headers." OFF "NOT PROJECT_IS_TOP_LEVEL" ON)
+cmake_dependent_option(ENABLE_MACOS_FRAMEWORK "Build as macOS Framework bundles instead of plain shared libraries." OFF "CMAKE_SYSTEM_NAME STREQUAL Darwin AND BUILD_SHARED_LIBS" OFF)
 
 # Experimental/unsupported features
 option(ENABLE_CXX_INTERFACE "Enable exporting C++ symbols for ProjectM and PCM classes, not only the C API. Warning: This is not very portable." OFF)
@@ -165,48 +166,14 @@ else()
 
     if(ENABLE_GLES)
         message(STATUS "Building for OpenGL Embedded Profile")
-        if(NOT CMAKE_SYSTEM_NAME STREQUAL Linux
-                AND NOT CMAKE_SYSTEM_NAME STREQUAL Android)
-            message(FATAL_ERROR "OpenGL ES 3 support is currently only available for Linux platforms. You're building for ${CMAKE_SYSTEM_NAME}.")
-        endif()
-
-        # We use a local find script for OpenGL::GLES3 until the proposed changes are merged upstream.
-        list(APPEND CMAKE_MODULE_PATH "${PROJECTM_SOURCE_DIR}/cmake/gles")
-        find_package(OpenGL REQUIRED COMPONENTS GLES3)
-        if(NOT TARGET OpenGL::GLES3)
-            message(FATAL_ERROR "No suitable GLES3 library was found.")
-        endif()
-
-        set(PROJECTM_OPENGL_LIBRARIES OpenGL::GLES3)
         set(USE_GLES ON)
     else()
         message(STATUS "Building for OpenGL Core Profile")
-        find_package(OpenGL REQUIRED)
-        set(PROJECTM_OPENGL_LIBRARIES OpenGL::GL)
-        # GLX is required by SOIL2 on platforms with the X Window System (e.g. most Linux distributions)
-        if(TARGET OpenGL::GLX)
-            list(APPEND PROJECTM_OPENGL_LIBRARIES OpenGL::GLX)
-        endif()
-        if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-            find_package(GLEW REQUIRED)
-            # Prefer shared, but check for static lib if shared is not available.
-            if(TARGET GLEW::glew)
-                list(APPEND PROJECTM_OPENGL_LIBRARIES GLEW::glew)
-            elseif(TARGET GLEW::glew_s)
-                list(APPEND PROJECTM_OPENGL_LIBRARIES GLEW::glew_s)
-            endif()
+        if(WIN32)
+            find_package(OpenGL REQUIRED)
+            set(PROJECTM_OPENGL_LIBRARIES OpenGL::GL)
         endif()
     endif()
-endif()
-
-if(ENABLE_CXX_INTERFACE)
-    set(CMAKE_C_VISIBILITY_PRESET default)
-    set(CMAKE_CXX_VISIBILITY_PRESET default)
-    set(CMAKE_VISIBILITY_INLINES_HIDDEN OFF)
-else()
-    set(CMAKE_C_VISIBILITY_PRESET hidden)
-    set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-    set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 endif()
 
 # Disable trace/debug logging in release builds unless explicitly requested
@@ -278,6 +245,7 @@ if(ENABLE_SDL_UI)
     message(STATUS "        SDL2 version:            ${SDL2_VERSION}")
 endif()
 message(STATUS "    OpenGL ES:                   ${ENABLE_GLES}")
+message(STATUS "    macOS Framework:             ${ENABLE_MACOS_FRAMEWORK}")
 message(STATUS "    Emscripten:                  ${ENABLE_EMSCRIPTEN}")
 if(CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     message(STATUS "    - PThreads:              ${USE_PTHREADS}")
@@ -287,7 +255,6 @@ message(STATUS "    Use system projectM-eval:    ${ENABLE_SYSTEM_PROJECTM_EVAL}"
 if(ENABLE_SYSTEM_PROJECTM_EVAL)
     message(STATUS "        projectM-eval version:       ${projectM-Eval_VERSION}")
 endif()
-message(STATUS "    Link UI with shared lib:     ${ENABLE_SHARED_LINKING}")
 message(STATUS "")
 message(STATUS "Targets and applications:")
 message(STATUS "==============================================")

@@ -29,6 +29,8 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include <projectM-4/projectM_cxx_export.h>
+
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
 #define USE_ACCELERATE_FFT 1
@@ -36,6 +38,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <complex>
 #endif
 
+#include <cstddef>
 #include <vector>
 
 namespace libprojectM {
@@ -46,7 +49,7 @@ namespace Audio {
  * Also applies an equalizer pattern with an envelope curve to the resulting data to smooth out
  * certain artifacts.
  */
-class MilkdropFFT
+class PROJECTM_CXX_EXPORT MilkdropFFT
 {
 public:
     /**

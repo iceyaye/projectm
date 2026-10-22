@@ -22,6 +22,20 @@ target_link_libraries(Audio
         libprojectM::API
         )
 
+if(BUILD_SHARED_LIBS)
+    if(ENABLE_CXX_INTERFACE)
+        target_compile_definitions(Audio
+                PRIVATE
+                projectM_api_EXPORTS
+                )
+    else()
+        target_compile_definitions(Audio
+                PRIVATE
+                PROJECTM_CXX_STATIC_DEFINE
+                )
+    endif()
+endif()
+
 # Link Accelerate framework on Apple platforms for optimized FFT
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(Audio

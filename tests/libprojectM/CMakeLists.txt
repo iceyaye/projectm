@@ -27,8 +27,12 @@ test_api_headers(TestMainAPIHeaders
         )
 
 add_executable(projectM-unittest
+        HLSLParserTest.cpp
+        HLSLModuloTest.cpp
         LoggingTest.cpp
         MilkdropFFTTest.cpp
+        MilkdropShaderCommentParsingTest.cpp
+        PCMTest.cpp
         PresetFileParserTest.cpp
         WaveformAlignerTest.cpp
 
@@ -37,7 +41,7 @@ add_executable(projectM-unittest
         $<TARGET_OBJECTS:Renderer>
         $<TARGET_OBJECTS:UserSprites>
         $<TARGET_OBJECTS:hlslparser>
-        $<TARGET_OBJECTS:SOIL2>
+        $<TARGET_OBJECTS:stb_image>
         $<TARGET_OBJECTS:projectM_main>
         )
 
@@ -51,6 +55,7 @@ target_include_directories(projectM-unittest
         PRIVATE
         "${PROJECTM_SOURCE_DIR}/src/libprojectM"
         "${PROJECTM_SOURCE_DIR}"
+        "${PROJECTM_SOURCE_DIR}/vendor/hlslparser/src"
         )
 
 target_link_libraries(projectM-unittest

@@ -5,6 +5,10 @@
 #include "Renderer/MilkdropNoise.hpp"
 #include "Renderer/Texture.hpp"
 
+#ifdef ENABLE_JXL
+#include "Renderer/JxlImage.hpp"
+#endif
+
 #include <Logging.hpp>
 #include <Utils.hpp>
 
@@ -24,10 +28,28 @@
 namespace libprojectM {
 namespace Renderer {
 
+#ifdef ENABLE_JXL
+namespace {
+
+auto IsJxlFile(const std::string& filePath) -> bool
+{
+    static const std::string extension{".jxl"};
+    auto const lowerCasePath = Utils::ToLower(filePath);
+    return lowerCasePath.size() > extension.size() &&
+           lowerCasePath.compare(lowerCasePath.size() - extension.size(), extension.size(), extension) == 0;
+}
+
+} // namespace
+#endif
+
 TextureManager::TextureManager(const std::vector<std::string>& textureSearchPaths)
     : m_textureSearchPaths(textureSearchPaths)
     , m_placeholderTexture(std::make_shared<Texture>("placeholder", 1, 1, false))
 {
+#ifdef ENABLE_JXL
+    m_extensions.emplace_back(".jxl");
+#endif
+
     Preload();
 }
 
@@ -228,20 +250,25 @@ auto TextureManager::TryLoadingTexture(const std::string& name) -> TextureSample
     // Fall back to filesystem loading
     ScanTextures();
 
-    for (const auto& file : m_scannedTextureFiles)
+    for (auto file = m_scannedTextureFiles.begin(); file != m_scannedTextureFiles.end();)
     {
-        if (file.lowerCaseBaseName != lowerCaseUnqualifiedName)
+        if (file->lowerCaseBaseName != lowerCaseUnqualifiedName)
         {
+            ++file;
             continue;
         }
 
-        auto texture = LoadTexture(file);
+        auto texture = LoadTexture(*file);
 
         if (texture)
         {
-            LOG_DEBUG("[TextureManager] Loaded texture \"" + unqualifiedName + "\" from file: " + file.filePath);
+            LOG_DEBUG("[TextureManager] Loaded texture \"" + unqualifiedName + "\" from file: " + file->filePath);
             return {texture, m_samplers.at({wrapMode, filterMode}), name, unqualifiedName};
         }
+
+        // Forget files that failed to load. Some presets request their textures every frame, and
+        // decoding a broken file again each time can stall rendering. The next preset load rescans.
+        file = m_scannedTextureFiles.erase(file);
     }
 
     LOG_WARN("[TextureManager] Failed to find requested texture \"" + unqualifiedName + "\"");
@@ -260,6 +287,21 @@ auto TextureManager::LoadTexture(const ScannedFile& file) -> std::shared_ptr<Tex
     int width{};
     int height{};
 
+#ifdef ENABLE_JXL
+    if (IsJxlFile(file.filePath))
+    {
+        auto const imageData = JxlImage::Load(file.filePath, width, height);
+
+        if (imageData.empty())
+        {
+            LOG_DEBUG("[TextureManager] Failed to decode JPEG XL image data.");
+            return {};
+        }
+
+        return AddRgbaTexture(file, imageData.data(), width, height);
+    }
+#endif
+
     std::unique_ptr<stbi_uc, decltype(&free)> imageData(stbi_load(file.filePath.c_str(), &width, &height, nullptr, 4), free);
 
     if (imageData.get() == nullptr)
@@ -268,10 +310,13 @@ auto TextureManager::LoadTexture(const ScannedFile& file) -> std::shared_ptr<Tex
         return {};
     }
 
-    auto format = TextureFormatFromChannels(4);
-    auto newTexture = std::make_shared<Texture>(file.lowerCaseBaseName, reinterpret_cast<const void*>(imageData.get()), GL_TEXTURE_2D, width, height, 0, format, format, GL_UNSIGNED_BYTE, true);
+    return AddRgbaTexture(file, imageData.get(), width, height);
+}
 
-    imageData.reset();
+auto TextureManager::AddRgbaTexture(const ScannedFile& file, const void* imageData, int width, int height) -> std::shared_ptr<Texture>
+{
+    auto format = TextureFormatFromChannels(4);
+    auto newTexture = std::make_shared<Texture>(file.lowerCaseBaseName, imageData, GL_TEXTURE_2D, width, height, 0, format, format, GL_UNSIGNED_BYTE, true);
 
     uint32_t const memoryBytes = width * height * 4; // RGBA, unsigned byte color channels.
     m_textures[file.lowerCaseBaseName] = newTexture;

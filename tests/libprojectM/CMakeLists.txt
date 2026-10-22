@@ -45,6 +45,13 @@ add_executable(projectM-unittest
         $<TARGET_OBJECTS:projectM_main>
         )
 
+if(ENABLE_JXL)
+    target_sources(projectM-unittest
+            PRIVATE
+            JxlImageTest.cpp
+            )
+endif()
+
 target_compile_definitions(projectM-unittest
         PRIVATE
         PROJECTM_TEST_DATA_DIR="${CMAKE_CURRENT_LIST_DIR}/data"

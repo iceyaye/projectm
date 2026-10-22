@@ -92,6 +92,19 @@ target_link_libraries(Renderer
         ${PROJECTM_OPENGL_LIBRARIES}
         )
 
+if(ENABLE_JXL)
+    target_sources(Renderer
+            PRIVATE
+            JxlImage.cpp
+            JxlImage.hpp
+            )
+
+    target_link_libraries(Renderer
+            PRIVATE
+            PkgConfig::PROJECTM_JXL
+            )
+endif()
+
 if(PROJECTM_FILESYSTEM_USE_BOOST)
     target_link_libraries(Renderer
         PRIVATE

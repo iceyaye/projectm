@@ -91,6 +91,16 @@ private:
 
     auto LoadTexture(const ScannedFile& file) -> std::shared_ptr<Texture>;
 
+    /**
+     * @brief Creates a texture from decoded RGBA pixel data and adds it to the loaded textures.
+     * @param file The file the image data was loaded from.
+     * @param imageData The RGBA pixel data, 8 bits per channel.
+     * @param width The image width in pixels.
+     * @param height The image height in pixels.
+     * @return The new texture.
+     */
+    auto AddRgbaTexture(const ScannedFile& file, const void* imageData, int width, int height) -> std::shared_ptr<Texture>;
+
     void AddTextureFile(const std::string& fileName, const std::string& baseName);
 
     static void ExtractTextureSettings(const std::string& qualifiedName, GLint& wrapMode, GLint& filterMode, std::string& name);

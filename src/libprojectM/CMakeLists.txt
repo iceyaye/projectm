@@ -98,6 +98,13 @@ target_link_libraries(projectM
         ${PROJECTM_FILESYSTEM_LIBRARY}
         )
 
+if(ENABLE_JXL)
+    target_link_libraries(projectM
+            PRIVATE
+            PkgConfig::PROJECTM_JXL
+            )
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(projectM
             PUBLIC
@@ -295,6 +302,11 @@ if(ENABLE_INSTALL)
             # We will just assume the build uses Boost from the default location (e.g. not a custom CMAKE_PREFIX_PATH) and
             # the library name is correct.
             set(PKGCONFIG_LIBS "${PKGCONFIG_LIBS} -lboost_filesystem")
+        endif()
+
+        if(ENABLE_JXL AND NOT BUILD_SHARED_LIBS)
+            # libjxl is linked privately, so only users of the static library need to link it too.
+            set(PKGCONFIG_PACKAGE_REQUIREMENTS_PRIVATE "libjxl libjxl_threads")
         endif()
 
         set(PKGCONFIG_PACKAGE_NAME "${PROJECTM_LIBRARY_BASE_OUTPUT_NAME}")

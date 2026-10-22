@@ -24,7 +24,6 @@
 #include "Logging.hpp"
 #include "Preset.hpp"
 #include "PresetFactoryManager.hpp"
-#include "PresetPreloader.hpp"
 #include "TimeKeeper.hpp"
 
 #include <Audio/PCM.hpp>
@@ -63,16 +62,7 @@ void ProjectM::LoadPresetFile(const std::string& presetFilename, bool smoothTran
     try
     {
         m_textureManager->PurgeTextures();
-
-        // Try to get a preloaded preset first for smoother transitions
-        auto preset = m_presetPreloader->TryGetPreloadedPreset(presetFilename);
-        if (!preset)
-        {
-            // Fallback to synchronous loading
-            preset = m_presetFactoryManager->CreatePresetFromFile(presetFilename);
-        }
-
-        StartPresetTransition(std::move(preset), !smoothTransition);
+        StartPresetTransition(m_presetFactoryManager->CreatePresetFromFile(presetFilename), !smoothTransition);
     }
     catch (const std::exception& ex)
     {
@@ -93,11 +83,6 @@ void ProjectM::LoadPresetData(std::istream& presetData, bool smoothTransition)
         LOG_ERROR(ex.what());
         PresetSwitchFailedEvent("", ex.what());
     }
-}
-
-void ProjectM::HintNextPreset(const std::string& filename)
-{
-    m_presetPreloader->PreloadPreset(filename);
 }
 
 void ProjectM::SetTexturePaths(std::vector<std::string> texturePaths)
@@ -254,8 +239,6 @@ void ProjectM::Initialize()
     m_spriteManager = std::make_unique<UserSprites::SpriteManager>();
 
     m_presetFactoryManager->initialize();
-
-    m_presetPreloader = std::make_unique<PresetPreloader>(*m_presetFactoryManager);
 
     LoadIdlePreset();
 

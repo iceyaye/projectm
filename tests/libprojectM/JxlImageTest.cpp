@@ -136,6 +136,13 @@ TEST(JxlImage, RejectTooManyPixels)
     ExpectRejected("too_many_pixels.jxl");
 }
 
+TEST(JxlImage, RejectTooManyChannels)
+{
+    // 1024x1024 RGB with 70 extra channels. The pixel count is fine, but all 73 channels together
+    // need more memory than a 4096x4096 RGBA image.
+    ExpectRejected("too_many_channels.jxl");
+}
+
 TEST(JxlImage, RejectMissingFile)
 {
     ExpectRejected("does-not-exist.jxl");

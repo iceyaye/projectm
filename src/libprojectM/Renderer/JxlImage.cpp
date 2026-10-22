@@ -22,6 +22,7 @@ namespace {
 // several times the output size internally: a 4096x4096 lossless image peaks at about 500 MB.
 constexpr uint32_t MaxDimension{16384};                 //!< Maximum width or height in pixels.
 constexpr uint64_t MaxPixels{4096 * 4096};              //!< Maximum pixel count, 64 MiB as RGBA.
+constexpr uint64_t MaxSamples{MaxPixels * 4};           //!< Maximum pixel count times channel count, including extra channels.
 constexpr std::streamoff MaxFileSize{64 * 1024 * 1024}; //!< Maximum file size in bytes.
 
 } // namespace
@@ -108,6 +109,14 @@ auto LoadFromMemory(const uint8_t* data, size_t size, int& width, int& height) -
                     static_cast<uint64_t>(info.xsize) * info.ysize > MaxPixels)
                 {
                     LOG_DEBUG("[JxlImage] Image size " + std::to_string(info.xsize) + "x" + std::to_string(info.ysize) + " exceeds the limit.");
+                    return {};
+                }
+
+                // The decoder keeps a full-size plane for every channel. The format allows thousands of
+                // extra channels, so count them too.
+                if (static_cast<uint64_t>(info.xsize) * info.ysize * (static_cast<uint64_t>(info.num_color_channels) + info.num_extra_channels) > MaxSamples)
+                {
+                    LOG_DEBUG("[JxlImage] Image has too many channels for its size: " + std::to_string(info.num_extra_channels) + " extra channels.");
                     return {};
                 }
 

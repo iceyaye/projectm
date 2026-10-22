@@ -16,6 +16,16 @@ if("@ENABLE_BOOST_FILESYSTEM@") # ENABLE_BOOST_FILESYSTEM
 
     find_dependency(Boost CONFIG NO_MODULE COMPONENTS Filesystem)
 endif()
+if("@ENABLE_JXL@" AND NOT "@BUILD_SHARED_LIBS@") # ENABLE_JXL AND NOT BUILD_SHARED_LIBS
+    # The static library links libjxl through the PkgConfig::PROJECTM_JXL target.
+    find_dependency(PkgConfig)
+    pkg_check_modules(PROJECTM_JXL QUIET IMPORTED_TARGET libjxl libjxl_threads)
+    if(NOT PROJECTM_JXL_FOUND)
+        set(projectM4_FOUND FALSE)
+        set(projectM4_NOT_FOUND_MESSAGE "libjxl and libjxl_threads are required by the static projectM library, but could not be found using pkg-config.")
+        return()
+    endif()
+endif()
 
 set(_projectM4_FIND_PARTS_REQUIRED)
 if(projectM4_FIND_REQUIRED)

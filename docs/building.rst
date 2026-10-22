@@ -107,6 +107,8 @@ General build dependencies for all platforms:
   version if not installed.
 * `SDL2 <https://github.com/libsdl-org/SDL>`__: Simple Directmedia Layer. Version 2.0.5 or higher is required to build
   the development test application in the build directory.
+* `libjxl <https://github.com/libjxl/libjxl>`__: JPEG XL reference library, including ``libjxl_threads``. Optional,
+  only required if ``ENABLE_JXL`` is ``ON``.
 * `vcpkg <https://github.com/microsoft/vcpkg>`__: C++ Dependency Manager. Optional, but recommended to install
   library dependencies and/or using CMake to configure the build. Mainly used on Windows, but also works for Linux and
   macOS.
@@ -469,6 +471,10 @@ using the ``-D`` switch.
      - ``OFF``
      - ``GLES``
      - Use OpenGL ES 3 profile for rendering instead of the Core profile.
+   * - ``ENABLE_JXL``
+     - ``OFF``
+     - ``libjxl``
+     - Load JPEG XL (``.jxl``) preset textures. libjxl is found via pkg-config. Not available with Emscripten.
 
 Note that ``ENABLE_GLES`` will be forcibly set to ``ON`` for Emscripten and Android builds, making it mandatory.
 

@@ -6,6 +6,9 @@
 /* Define PROJECTM_USE_THREADS */
 #cmakedefine01 PROJECTM_USE_THREADS
 
+/* Define ENABLE_JXL if JPEG XL textures are supported */
+#cmakedefine ENABLE_JXL
+
 /* Version number of package */
 #define VERSION "@libprojectM_VERSION@"
 

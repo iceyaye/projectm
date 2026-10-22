@@ -13,15 +13,26 @@ projectM is an open-source music visualizer library that reimplements Winamp Mil
 ## Build Commands
 
 ```bash
-# Clean, configure, build, and install (macOS universal binary)
+# Clean, configure, build, and install for this Mac's own architecture (Apple Silicon or Intel),
+# with JPEG XL textures
 rm -rf build
-  cmake -B build \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DBUILD_SHARED_LIBS=ON \
-    -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
-  cmake --build build
-  sudo cmake --install build
+cmake -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr/local \
+  -DBUILD_SHARED_LIBS=ON \
+  -DENABLE_JXL=ON
+cmake --build build
+sudo cmake --install build
+
+# Universal binary (Apple Silicon + Intel), e.g. for distribution. JPEG XL must stay off (see macOS note).
+rm -rf build
+cmake -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr/local \
+  -DBUILD_SHARED_LIBS=ON \
+  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+cmake --build build
+sudo cmake --install build
 
 # Run tests (must enable BUILD_TESTING first)
 cmake -B build -DBUILD_TESTING=ON
@@ -38,30 +49,33 @@ ctest --test-dir build --verbose
 | `ENABLE_SDL_UI` | OFF | Build SDL2 test application |
 | `ENABLE_GLES` | OFF | Use OpenGL ES 3 (forced ON for Emscripten/Android) |
 | `ENABLE_PLAYLIST` | ON | Build playlist library |
+| `ENABLE_JXL` | OFF | Load JPEG XL (`.jxl`) textures with libjxl (found via pkg-config) |
 
 ### Platform-Specific Notes
 
-- **Windows**: Requires GLEW, use vcpkg for dependencies
+- **macOS**: Homebrew installs libjxl only for the Mac's own architecture, so a universal (`arm64;x86_64`) build fails to link with `ENABLE_JXL=ON`. Native builds with JXL work on Apple Silicon and Intel. Build universal binaries with JXL off.
+- **Windows**: Use vcpkg for dependencies (see `docs/building.rst`). OpenGL is loaded with the bundled glad, so GLEW is not needed.
 - **Raspberry Pi/Embedded**: Use `-DENABLE_GLES=ON`
-- **Emscripten**: See EMSCRIPTEN.md
+- **Emscripten**: See `docs/emscripten.rst`
 
 ## Architecture
 
 ```
 src/
 ├── libprojectM/           # Core visualization engine
-│   ├── Audio/             # PCM processing, FFT, beat detection
+│   ├── Audio/             # PCM processing, FFT (Apple Accelerate on macOS), beat detection
 │   ├── MilkdropPreset/    # Preset parsing and evaluation
 │   │   ├── Shaders/       # GLSL shader implementation
 │   │   └── Waveforms/     # Waveform rendering (11+ types)
-│   ├── Renderer/          # OpenGL rendering pipeline
+│   ├── Renderer/          # OpenGL rendering pipeline, texture loading (stb_image, optional libjxl)
 │   └── UserSprites/       # User sprite system
 ├── api/                   # Public C API (header-only interface)
 │   └── include/projectM-4/
 └── playlist/              # Playlist management library
 vendor/
+├── glad/                  # OpenGL function loader
 ├── glm/                   # OpenGL Math (bundled)
-├── SOIL2/                 # Image loading
+├── stb_image/             # Image loading
 ├── hlslparser/            # HLSL to GLSL transpiler
 └── projectm-eval/         # Milkdrop expression evaluator (submodule)
 ```
@@ -71,7 +85,7 @@ vendor/
 - **C API**: Stable public API in `src/api/include/projectM-4/`. C++ interface exists but is unsupported.
 - **Preset Compatibility**: Must maintain MilkDrop preset format compatibility
 - **Performance**: Embedded systems support - mesh resolution caps at 300x300 per-pixel
-- **OpenGL Requirements**: Core 3.3 or ES 3.2
+- **OpenGL Requirements**: Core 3.3 or ES 3.0
 
 ## Code Style
 
@@ -105,10 +119,10 @@ ctest --verbose
 
 ## Dependencies
 
-- **Required**: OpenGL 3.3+ (or ES 3.2), CMake 3.21+
-- **Windows**: GLEW
-- **Optional**: SDL2 (test UI), GTest (tests)
-- **Bundled**: GLM, SOIL2, hlslparser
+- **Required**: OpenGL 3.3+ (or ES 3.0+), CMake 3.21+
+- **macOS**: Accelerate framework (FFT), linked automatically
+- **Optional**: SDL2 (test UI), GTest (tests), libjxl (`ENABLE_JXL`; tested with 0.12; `brew install jpeg-xl`)
+- **Bundled**: glad, GLM, stb_image, hlslparser, projectm-eval (submodule)
 
 ## Submodules
 

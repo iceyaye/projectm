@@ -474,7 +474,9 @@ using the ``-D`` switch.
    * - ``ENABLE_JXL``
      - ``OFF``
      - ``libjxl``
-     - Load JPEG XL (``.jxl``) preset textures. libjxl is found via pkg-config. Not available with Emscripten.
+     - Load JPEG XL (``.jxl``) preset textures. libjxl is found via pkg-config. Not available with Emscripten. A macOS
+       universal build (``CMAKE_OSX_ARCHITECTURES="arm64;x86_64"``) needs a universal libjxl; Homebrew only installs
+       the Mac's own architecture.
 
 Note that ``ENABLE_GLES`` will be forcibly set to ``ON`` for Emscripten and Android builds, making it mandatory.
 

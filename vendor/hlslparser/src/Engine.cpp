@@ -48,7 +48,7 @@ int String_Printf(char * buffer, int size, const char * format, ...) {
 
 int String_FormatFloat(char * buffer, int size, float value) {
     std::ostringstream oss;
-    oss.imbue(std::locale("C"));
+    oss.imbue(std::locale::classic());
     oss << value;
 
     return String_Printf(buffer, size, "float(%s)", oss.str().c_str());

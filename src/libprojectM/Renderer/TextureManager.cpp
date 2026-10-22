@@ -250,20 +250,25 @@ auto TextureManager::TryLoadingTexture(const std::string& name) -> TextureSample
     // Fall back to filesystem loading
     ScanTextures();
 
-    for (const auto& file : m_scannedTextureFiles)
+    for (auto file = m_scannedTextureFiles.begin(); file != m_scannedTextureFiles.end();)
     {
-        if (file.lowerCaseBaseName != lowerCaseUnqualifiedName)
+        if (file->lowerCaseBaseName != lowerCaseUnqualifiedName)
         {
+            ++file;
             continue;
         }
 
-        auto texture = LoadTexture(file);
+        auto texture = LoadTexture(*file);
 
         if (texture)
         {
-            LOG_DEBUG("[TextureManager] Loaded texture \"" + unqualifiedName + "\" from file: " + file.filePath);
+            LOG_DEBUG("[TextureManager] Loaded texture \"" + unqualifiedName + "\" from file: " + file->filePath);
             return {texture, m_samplers.at({wrapMode, filterMode}), name, unqualifiedName};
         }
+
+        // Forget files that failed to load. Some presets request their textures every frame, and
+        // decoding a broken file again each time can stall rendering. The next preset load rescans.
+        file = m_scannedTextureFiles.erase(file);
     }
 
     LOG_WARN("[TextureManager] Failed to find requested texture \"" + unqualifiedName + "\"");
